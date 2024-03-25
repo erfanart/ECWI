@@ -1,3 +1,12 @@
+#######################################################
+######	installer scprit to enable marco and 	 ######
+######	dependencies to make WAF!   	         ######
+######	don`t forget if you have mulipe zones	 ######
+######	take multiple ip to your vm and define 	 ######
+######	them with <-z> or <z> swithes with this  ######
+######	script					 ######
+#######################################################
+
 #!/bin/bash
 
 PortFile="/etc/apache2/ports.conf"
