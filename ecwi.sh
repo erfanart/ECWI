@@ -1,3 +1,4 @@
+#!/bin/bash
 #######################################################
 ######	installer scprit to enable marco and 	 ######
 ######	dependencies to make WAF!   	         ######
@@ -7,7 +8,7 @@
 ######	script					 ######
 #######################################################
 
-#!/bin/bash
+
 
 PortFile="/etc/apache2/ports.conf"
 ConfDirectory="/etc/apache2/conf-available/"
