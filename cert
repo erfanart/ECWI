@@ -1,10 +1,18 @@
 #!/bin/bash
-
-take=$(sed -n '/#--/,/#--/{/#--PUBLIC ACCESS--#/!{/#--/!{/^#/!{/./p}}}}' /etc/apache2/sites-enabled/rcsis.ir.conf | grep "Use publish" | grep -v "www" | awk '{print $4}')
+if [ -n "$3" ]; then
+        take=$3
+else
+	ls /etc/apache2/sites-enabled/$2.conf 
+        take=$(sed -n '/#--/,/#--/{/#--PUBLIC ACCESS--#/!{/#--/!{/^#/!{/./p}}}}' /etc/apache2/sites-enabled/$2.conf | grep "Use publish" | grep -v "www" | awk '{print $4}')
+fi
 AvailableDirectory="/etc/apache2/sites-available/"
 SiteDirectory="/etc/apache2/sites-available/public/public.conf"
 
 file=$SiteDirectory
+
+CmdRenew(){
+certbot renew --config-dir /etc/apache2/ssl/  --webroot --webroot-path /var/www/html
+}
 
 CmdSub(){
 domain=$1
@@ -13,7 +21,7 @@ for SUBDOMAIN in ${take[@]}
 do
         DOMAIN=$SUBDOMAIN.$domain
         echo "take ssl for $DOMAIN"
-	certbot certonly --webroot --webroot-path /var/www/html --config-dir /etc/apache2/ssl/ -d $DOMAIN --agree-tos --manual-public-ip-logging-ok --cert-path /etc/apache2/ssl/archive/$DOMAIN/cert.pem --cert-name $DOMAIN
+        certbot certonly --webroot --webroot-path /var/www/html --config-dir /etc/apache2/ssl/ -d $DOMAIN --agree-tos --manual-public-ip-logging-ok --cert-path /etc/apache2/ssl/archive/$DOMAIN/cert.pem --cert-name $DOMAIN
 done
 }
 
@@ -26,11 +34,12 @@ certbot certonly --webroot --webroot-path /var/www/html --config-dir /etc/apache
 
 MakeSsl(){
 if [ -x "$(command -v certbot)" ]; then
-	echo "certbot is already installed." 
-	#echo $@
-	cat << 'EOF' > $AvailableDirectory/ssl.conf
+        echo "certbot is already installed." 
+        #echo $@
+        cat << 'EOF' > $AvailableDirectory/ssl.conf
 <Location "/.well-known">
         ProxyPass "!"
+        satisfy any
         SecRuleEngine off
 </Location>
 Alias /.well-known /var/www/html/.well-known
@@ -49,34 +58,37 @@ if ! grep -q "$replacement" "$file"; then
     echo "$replacement" >> "$file"
 fi
 if  grep -q "$replacement" "$file"; then
-	pattern="IncludeOptional \/etc\/apache2\/sites-available\/ssl.conf"
-	replacement="#IncludeOptional \/etc\/apache2\/sites-available\/ssl.conf"
-    	sed -i "s/$replacement/$pattern/g" "$file"
+        pattern="IncludeOptional \/etc\/apache2\/sites-available\/ssl.conf"
+        replacement="#IncludeOptional \/etc\/apache2\/sites-available\/ssl.conf"
+        sed -i "s/$replacement/$pattern/g" "$file"
 fi
 service apache2 restart
-	$1 $3
+$1 $3
 
 sed -i "s/$pattern/$replacement/g" "$file"
 service apache2 restart
-	
+
 
 else
-	echo "certbot is NOT installed." 
-	sudo apt-get install python3 python3-venv libaugeas0
-	sudo python3 -m venv /opt/certbot/
-	sudo /opt/certbot/bin/pip install --upgrade pip
-	sudo /opt/certbot/bin/pip install certbot certbot-apache
-	sudo ln -s /opt/certbot/bin/certbot /usr/bin/certbot
+        echo "certbot is NOT installed." 
+        sudo apt-get install python3 python3-venv libaugeas0
+        sudo python3 -m venv /opt/certbot/
+        sudo /opt/certbot/bin/pip install --upgrade pip
+        sudo /opt/certbot/bin/pip install certbot certbot-apache
+        sudo ln -s /opt/certbot/bin/certbot /usr/bin/certbot
 
 fi
 }
 if [ -n "$1" ]; then
     case "$1" in
         -r|r)
-		MakeSsl CmdRoot $@
+                MakeSsl CmdRoot $@
                 ;;
         -s|s)
                 MakeSsl CmdSub $@
+                ;;
+        -n|n)
+                MakeSsl CmdRenew $@
                 ;;
         -h|h)
                 echo """
@@ -85,11 +97,9 @@ s for sub domain
                 """
                 ;;
         *)
-		echo "input switches or for help <iecw -h>"
+                echo "input switches or for help <iecw -h>"
             ;;
     esac
 else
     echo "input switches or for help <iecw -h>"
 fi
-                        
-
