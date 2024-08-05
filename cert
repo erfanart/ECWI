@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "the last is " ${!#}
 if [ -n "$3" ]; then
         take=$3
 else
@@ -15,20 +16,29 @@ certbot renew --config-dir /etc/apache2/ssl/  --webroot --webroot-path /var/www/
 }
 
 CmdSub(){
-domain=$1
+domain=$3
 echo "Intext Echo"
 for SUBDOMAIN in ${take[@]}
 do
         DOMAIN=$SUBDOMAIN.$domain
         echo "take ssl for $DOMAIN"
-        certbot certonly --webroot --webroot-path /var/www/html --config-dir /etc/apache2/ssl/ -d $DOMAIN --agree-tos --manual-public-ip-logging-ok --cert-path /etc/apache2/ssl/archive/$DOMAIN/cert.pem --cert-name $DOMAIN
+        if [[ "${!#}" == "--self" ]];then
+        	openssl req -x509 -newkey rsa:4096 -keyout /etc/apache2/ssl/archive/$DOMAIN/privkey.pem -out /etc/apache2/ssl/archive/$DOMAIN/cert.pem  -sha256 -days 365
+	else
+                certbot certonly --webroot --webroot-path /var/www/html --config-dir /etc/apache2/ssl/ -d $DOMAIN --agree-tos --manual-public-ip-logging-ok --cert-path /etc/apache2/ssl/archive/$DOMAIN/cert.pem --cert-name $DOMAIN
+
+        fi
 done
 }
 
 
 CmdRoot() {
-DOMAIN=$1
-certbot certonly --webroot --webroot-path /var/www/html --config-dir /etc/apache2/ssl/ -d $DOMAIN -d www.$DOMAIN --agree-tos --manual-public-ip-logging-ok --cert-path /etc/apache2/ssl/archive/$DOMAIN/cert.pem --cert-name $DOMAIN
+	 DOMAIN=$3
+        if [[ "${!#}" == "--self" ]];then
+        	openssl req -x509 -newkey rsa:4096 -keyout /etc/apache2/ssl/archive/$DOMAIN/privkey.pem -out /etc/apache2/ssl/archive/$DOMAIN/cert.pem  -sha256 -days 365
+	else
+		certbot certonly --webroot --webroot-path /var/www/html --config-dir /etc/apache2/ssl/ -d $DOMAIN -d www.$DOMAIN --agree-tos --manual-public-ip-logging-ok --cert-path /etc/apache2/ssl/archive/$DOMAIN/cert.pem --cert-name $DOMAIN
+	fi
 }
 
 
@@ -63,7 +73,7 @@ if  grep -q "$replacement" "$file"; then
         sed -i "s/$replacement/$pattern/g" "$file"
 fi
 service apache2 restart
-$1 $3
+$1 $@
 
 sed -i "s/$pattern/$replacement/g" "$file"
 service apache2 restart
