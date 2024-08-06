@@ -30,7 +30,7 @@ ask_question() {
 		while true; do
     		read -rp "$1 (Y/n): " response
     		case ${response,,} in
-        			y|"") return 0;;
+        			y|Y|"") return 0;;
         			n ) return 1;;
         			* ) echo "لطفاچرت و پرت وارد نکنید😐";
    			esac
@@ -49,7 +49,7 @@ cat << 'EOF'
 
 EOF
 declare -A modules=(
-"security2"		"libapache2-mod-security2"
+# "security2"		"libapache2-mod-security2"
 "proxy"			"libapache2-mod-proxy-html libxml2-dev"
 "proxy_ajp"		"libapache2-mod-proxy-html libxml2-dev"
 "proxy_balancer"	"libapache2-mod-proxy-html libxml2-dev"
@@ -70,7 +70,7 @@ declare -A modules=(
 "alias"			"apache2 apache2-dev"
 "ssl"			"libapache2-mod-ssl"
 "rewrite"		"libapache2-mod-rewrite"
-"evasive"		"libapache2-mod-evasive"
+# "evasive"		"libapache2-mod-evasive"
 )
 for m in ${!modules[@]};
 do	
@@ -317,18 +317,11 @@ cat << 'EOF'
 #######################################################
 
 EOF
-
-declare -A Zones
-condition=true
-while $condition; do 
-	read -p "Please enter your Zones Name: " Name
-    read -p "Please enter your Zones Ip Address: " Ip
-	if ask_question "Do you confirm your Name And Ip Zone?"; then
-		Zones["$Name"]="$Ip"
-		if ask_question "Do you want add another Zone?"; then
-			echo "Please Enter Your Zone.."
-		
-		else	
+MakeZoneJub(){
+grep -q "#--Define Zones Ips--#" $PortFile
+if [ $? -eq 0 ]; then
+	echo "Pattern exists"
+else
 			cat << 'EOF' > $PortFile
 # If you just change the port or add more ports here, you will likely also
 # have to change the VirtualHost statement in
@@ -349,10 +342,15 @@ while $condition; do
 #--Gnutls Listen Zones Ips--#
 </IfModule>
 EOF
+fi
 			echo "Making Your Zone..."
 			echo "ZoneName	ZoneIp"
 			for zone in ${!Zones[@]};do 
 				X=${Zones[$zone]}
+				grep -q "$zone" $PortFile
+				if [ $? -eq 0 ];then
+				echo "$zone zone is already exist"
+				else
 				mkdir -p $LogDirectory/$zone
 				mkdir -p $SiteDirectory/$zone
 				touch $SiteDirectory/$zone/$zone.conf
@@ -363,11 +361,47 @@ EOF
 				sed -i "/#--Listen Zones Ips--#/a\ Listen \${$zone}:80" $PortFile
 				sed -i "/#--Ssl Listen Zones Ips--#/a\ Listen \${$zone}:443" $PortFile
 				sed -i "/#--Gnutls Listen Zones Ips--#/a\ Listen \${$zone}:443" $PortFile
+				fi
 			done
-			condition=false
+
+}
+
+ComitZone(){
+		if ask_question "Do you confirm your Name And Ip Zones?"; then
+			Zones["$Name"]="$Ip"
+		if ask_question "Do you want add another Zone?"; then
+			echo "Please Enter Your Zone.."
+		else
+				echo ${Zones[@]}
+				MakeZoneJub	
+				condition=false
 		fi
+		else
+			echo "Please Enter Your Zones Again.."
+			flag=1
+		fi
+
+}
+
+declare -A Zones
+condition=true
+while $condition; do 
+	if [ -n "$1" ];then
+	echo "JASON"      
+      items=$(echo $1 | sed 's/[{}]//g' | sed 's/","/ /g' | sed 's/\"//g')
+      for item in $items; do
+        Name=$(echo $item | awk -F: '{print $1}')
+        Ip=$(echo $item | awk -F: '{print $2}')
+		Zones["$Name"]="$Ip"
+      done
+		echo ${Zones[@]}
+		MakeZoneJub
+		condition=false
 	else
-		echo "Please Enter Your Zone Again.."
+		read -p "Please enter your Zones Name: " Name
+    	read -p "Please enter your Zones Ip Address: " Ip
+		ComitZone "$Name" "$Ip"
+
 	fi
 done
 }
@@ -385,10 +419,10 @@ EOF
 
 if [ -x "$(command -v apache2)" ]; then
     echo "Apache2 is already installed."
-	CheckModules
+	CheckModules 
 	MakeMacros
-	MakeZones
-	MakeDomain
+	MakeZones $2
+	MakeDomain $3
 
 else
 	echo "installing Apache2"
@@ -397,8 +431,8 @@ else
 		if [ $? -eq 0 ];then
 			CheckModules
 			MakeMacros
-			MakeZones
-			MakeDomain
+			MakeZones $2
+			MakeDomain $3
 		fi
 fi
 }
@@ -414,61 +448,74 @@ echo """
 #######################################################
 
 """
-	
+MakeDomainJob(){
+	echo "Making Your Domain..."
+	count=0
+	while [ $count -lt ${#Domains[@]} ];do
+		for domain in ${!Domains[@]};do
+		echo ${Domains[$count]}
+		X=${Domains[$count]}
+		readarray -t dirs < <(\
+		find $SiteDirectory \
+			-maxdepth 1 \
+			-mindepth 1 \
+			-type d \
+			-printf '%f\n'\
+		)
+		if [ ${#dirs[@]} -eq 0 ]; then
+    			echo "No zones found."
+			MakeZones
+			
+		else
+			echo "#--- Make Directories For Domain: $X ---# "
+			touch $SiteDirectory/$X.conf
+			sed -i '1i\#Use [Macro Name] [domain] [Subdomain] [Access] [Url For Proxy] [Cutom Config] [ProxyHeader] [SslProxy] [ModeSecurity]' $SiteDirectory/$X.conf
+			echo $SiteDirectory/$X.conf
+			for zone in ${dirs[@]};do 
+				echo "Make $X Files For "$zone" Zone"
+				mkdir -p $LogDirectory/$zone/$X
+				echo $LogDirectory/$zone/$X
+				mkdir -p $SiteDirectory/$zone/$X
+				echo $SiteDirectory/$zone/$X
+				echo "#--$zone access--#" | tr '[:lower:]' '[:upper:]' >> $SiteDirectory/$X.conf
+				echo -e "\n"
+			done
+			count=$(( $count + 1 ))
+		fi	
+		done
+	echo "you all domains are: "${Domains[@]}
+	done
+	a2ensite ${Domains[@]}
+	if [ $? -eq 0 ];then
+	      echo "Restart Sevice..."
+  	      service apache2 restart
+	fi
+
+}	
 
 declare -a Domains
 while true; do 
+	if [ -n "$1" ];then
+	echo "JASON"      
+      items=$(echo $1 | sed 's/[{}]//g' | sed 's/","/ /g' | sed 's/\"//g')
+      for Name in $items; do
+		Domains+=("$Name")
+      done
+	  echo ${Domains[@]}
+		MakeDomainJob
+	  break
+	else
 	read -p "Please enter your Domain Name: " Name
 	if ask_question "Do you confirm your Domain?"; then
 		Domains+=("$Name")
 		if ask_question "Do you want add another Domain?"; then
 			echo "Please Enter Your Domain.."
-		
-		else	
-			echo "Making Your Domain..."
-			count=0
-			while [ $count -lt ${#Domains[@]} ];do
-				#for domain in ${!Domains[@]};do
-				X=${Domains[$count]}
-				readarray -t dirs < <(\
-				find $SiteDirectory \
-					-maxdepth 1 \
-					-mindepth 1 \
-					-type d \
-					-printf '%f\n'\
-				)
-				if [ ${#dirs[@]} -eq 0 ]; then
-    					echo "No zones found."
-					MakeZones
-					
-				else
-					echo "#--- Make Directories For Domain: $X ---# "
-					touch $SiteDirectory/$X.conf
-					sed -i '1i\#Use [Macro Name] [domain] [Subdomain] [Access] [Url For Proxy] [Cutom Config] [ProxyHeader] [SslProxy] [ModeSecurity]' $SiteDirectory/$X.conf
-					echo $SiteDirectory/$X.conf
-					for zone in ${dirs[@]};do 
-						echo "Make $X Files For "$zone" Zone"
-						mkdir -p $LogDirectory/$zone/$X
-						echo $LogDirectory/$zone/$X
-						mkdir -p $SiteDirectory/$zone/$X
-						echo $SiteDirectory/$zone/$X
-						echo "#--$zone access--#" | tr '[:lower:]' '[:upper:]' >> $SiteDirectory/$X.conf
-						echo -e "\n"
-					done
-					count=$(( $count + 1 ))
-				fi	
-			#	done
-			echo "you all domains are: "${Domains[@]}
-			done
-			a2ensite ${Domains[@]}
-			if [ $? -eq 0 ];then
-			      echo "Restart Sevice..."
-  			      service apache2 restart
-			fi
-			break;
+		else
+			MakeDomainJob	
 		fi
 	else
 		echo "Please Enter Your Domain Again.."
+	fi
 	fi
 done
 }
@@ -480,17 +527,17 @@ if [ -n "$1" ]; then
 		MakeMacros
 		;;
 	-d|d)
-		MakeDomain
+		MakeDomain $2
 		;;
 	-z|z)
-		MakeZones
+		MakeZones $2
 		;;
-        -c|c)
-            	CheckModules
+    -c|c)
+        CheckModules
 		;;
-        -i|i)
-            	InstallWaf
-            	;;
+    -i|i)
+        InstallWaf $@
+        ;;
 	-h|h)
 		echo """
 i for install Waf
