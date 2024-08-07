@@ -1,0 +1,9 @@
+services:
+  dispatcher:
+    image: dispatcher:latest
+    volumes:
+      - ./data/conf:/etc/apache2
+      - ./data/logs:/var/log/apache2
+    ports:
+      - "9080:80"
+    user: root
