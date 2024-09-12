@@ -91,6 +91,9 @@ fi
 }
 if [ -n "$1" ]; then
     case "$1" in
+	-i|i)
+		MakeSsl
+		;;
         -r|r)
                 MakeSsl CmdRoot $@
                 ;;

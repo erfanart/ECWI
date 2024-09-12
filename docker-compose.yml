@@ -4,6 +4,7 @@ services:
     volumes:
       - ./data/conf:/etc/apache2
       - ./data/logs:/var/log/apache2
+      - ./data/www:/var/www
     ports:
       - "80:80"
       - "9443:443"
