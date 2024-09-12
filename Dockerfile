@@ -13,8 +13,10 @@ RUN apt-get update
 # Download and install Jira
 RUN chmod +x /bin/ecwi.sh
 RUN chmod +x /bin/cert
-RUN /bin/ecwi.sh -i '{"PUBLIC":"0.0.0.0"}' '{"kashef.ir"}'
+RUN /bin/ecwi.sh -i '{"public":"0.0.0.0"}' '{"rcsis.ir"}'
 RUN /bin/cert -i
+#RUN mkdir /etc/apache2-default
+#RUN mkdir /var/log/apache2-default
 RUN cp -r /etc/apache2 /etc/apache2-default
 RUN cp -r /var/log/apache2 /var/log/apache2-default
 

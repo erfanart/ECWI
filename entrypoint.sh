@@ -1,5 +1,6 @@
 #!/bin/bash
 # Ensure directories exist
+
 mkdir -p /var/log/apache2
 mkdir -p /etc/apache2
 
@@ -8,7 +9,7 @@ if [ ! -d "/var/log/apache2" ]; then
   cp -r /var/log/apache2-default/*  /var/log/apache2/
 fi
 
-if [ ! -d "/etc/apache2" ]; then
+if [ ! -d "/etc/apache2/apache2.conf" ]; then
   cp -r /etc/apache2-default/* /etc/apache2/
 fi
 

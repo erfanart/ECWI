@@ -49,7 +49,7 @@ cat << 'EOF'
 
 EOF
 declare -A modules=(
-# "security2"		"libapache2-mod-security2"
+"security2"		"libapache2-mod-security2"
 "proxy"			"libapache2-mod-proxy-html libxml2-dev"
 "proxy_ajp"		"libapache2-mod-proxy-html libxml2-dev"
 "proxy_balancer"	"libapache2-mod-proxy-html libxml2-dev"
@@ -81,19 +81,19 @@ if [ -f "/etc/apache2/mods-available/"$m".load" ] || [ -f "/etc/apache2/mods-ava
                 echo "All $m modules are already enabled."
         else
                 echo "Enabling header modules..."
-                sudo a2enmod $m
+                a2enmod $m
                 echo "$m modules have been enabled."
         fi
 else
    	echo $m "is Not installed"
-	eval "sudo apt install ${modules[$m]}"
+	eval "apt install ${modules[$m]} -y"
 	if [ -f "/etc/apache2/mods-available/"$m".load" ] || [ -f "/etc/apache2/mods-available/"$m".conf" ]; then
         	echo $m "is already installed"
         	if [ ! -z $(a2query -m | awk '{print $1}' | sort -n | grep $m) ];then
                 	echo "All $m modules are already enabled."
         	else
                		echo "Enabling $m modules..."
-                	eval "sudo a2enmod $m"
+                	eval "a2enmod $m"
                 	echo "$m modules have been enabled."
         	fi
 	else
@@ -426,8 +426,8 @@ if [ -x "$(command -v apache2)" ]; then
 
 else
 	echo "installing Apache2"
-        sudo apt update
-        sudo apt install apache2*
+        apt update
+        apt install apache2* -y
 		if [ $? -eq 0 ];then
 			CheckModules
 			MakeMacros
