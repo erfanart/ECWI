@@ -1,6 +1,6 @@
 services:
   dispatcher:
-    image: dispatcher:latest
+    image: ecwi:latest
     volumes:
       - ./data/conf:/etc/apache2
       - ./data/logs:/var/log/apache2
